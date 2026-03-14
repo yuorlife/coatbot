@@ -1,0 +1,26 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: ["main"] # Or "master" depending on your default branch
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Inject Secrets into HTML
+        run: |
+          sed -i "s|VITE_SUPABASE_URL|${{ secrets.SUPABASE_URL }}|g" index.html
+          sed -i "s|VITE_SUPABASE_ANON_KEY|${{ secrets.SUPABASE_ANON_KEY }}|g" index.html
+
+      - name: Deploy
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: . # The folder your index.html is in
+          branch: gh-pages # This creates a hidden branch for the live site
