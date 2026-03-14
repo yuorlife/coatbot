@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Discord Bot Controller</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 50px; background: #2c2f33; color: white; }
+        input { padding: 10px; border-radius: 5px; border: none; width: 300px; margin-bottom: 10px; }
+        button { padding: 10px 20px; background: #5865F2; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #4752c4; }
+        #status { margin-top: 20px; font-size: 0.9em; color: #b9bbbe; }
+    </style>
+</head>
+<body>
+
+    <h2>Send Message to Discord</h2>
+    <input type="text" id="messageInput" placeholder="Type something for the bot...">
+    <button onclick="sendToBot()">Send to Discord</button>
+    <p id="status"></p>
+
+    <script>
+        // 1. Replace these with your actual Supabase credentials
+        const SUPABASE_URL = 'https://your-project-url.supabase.co'
+        const SUPABASE_ANON_KEY = 'your-anon-key'
+        
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+        async function sendToBot() {
+            const msgText = document.getElementById('messageInput').value;
+            const statusLabel = document.getElementById('status');
+
+            if (!msgText) return alert("Please type a message!");
+
+            statusLabel.innerText = "Sending...";
+
+            // 2. Insert the message into your 'commands' table
+            const { data, error } = await supabase
+                .from('commands')
+                .insert([{ message: msgText, status: 'pending' }]);
+
+            if (error) {
+                console.error(error);
+                statusLabel.innerText = "Error sending message.";
+            } else {
+                statusLabel.innerText = "Success! The bot will pick it up shortly.";
+                document.getElementById('messageInput').value = ""; // Clear input
+            }
+        }
+    </script>
+</body>
+</html>
