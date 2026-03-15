@@ -18,6 +18,8 @@ jobs:
         run: |
           sed -i "s|VITE_SUPABASE_URL|${{ secrets.SUPABASE_URL }}|g" index.html
           sed -i "s|VITE_SUPABASE_ANON_KEY|${{ secrets.SUPABASE_ANON_KEY }}|g" index.html
+          # Verify for debugging (This won't show your secrets in logs, don't worry)
+          grep "supabase.co" index.html || echo "URL not found after injection"
 
       - name: Deploy
         uses: JamesIves/github-pages-deploy-action@v4
