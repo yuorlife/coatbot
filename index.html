@@ -2,56 +2,66 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Coat Bot Admin Pro</title>
+    <title>Coat Admin Pro</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root { --bg: #2c2f33; --card: #23272a; --blurple: #5865F2; --green: #43b581; --red: #f04747; --grey: #99aab5; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; padding: 20px; margin: 0; }
-        .container { max-width: 1000px; margin: 0 auto; background: var(--card); padding: 20px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .container { max-width: 1000px; margin: 0 auto; background: var(--card); padding: 20px; border-radius: 12px; }
         
-        /* Table Styling */
+        /* Table & UI */
         table { width: 100%; border-collapse: collapse; margin-bottom: 30px; background: #2f3136; border-radius: 8px; overflow: hidden; }
         th, td { padding: 12px; text-align: left; border-bottom: 1px solid #40444b; }
-        th { background: #202225; color: var(--grey); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; }
+        th { background: #202225; color: var(--grey); font-size: 0.75rem; text-transform: uppercase; }
+        .edit-icon { cursor: pointer; margin-left: 8px; opacity: 0.3; }
+        .btn-plus { background: var(--green); color: white; border: none; border-radius: 50%; width: 28px; height: 28px; cursor: pointer; font-size: 20px; }
+        .btn-del { background: none; border: none; cursor: pointer; filter: grayscale(1); }
+        .btn-del:hover { filter: grayscale(0); transform: scale(1.2); }
         
-        /* Header Actions */
-        .header-flex { display: flex; align-items: center; gap: 15px; margin-top: 30px; margin-bottom: 10px; }
-        .btn-plus { background: var(--green); color: white; border: none; border-radius: 50%; width: 28px; height: 28px; cursor: pointer; font-weight: bold; font-size: 18px; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
-        .btn-plus:hover { transform: scale(1.1); filter: brightness(1.1); }
+        /* Modal Styling */
+        #modalOverlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 100; }
+        .modal { background: var(--card); padding: 25px; border-radius: 12px; width: 350px; box-shadow: 0 0 20px rgba(0,0,0,0.5); border: 1px solid var(--blurple); }
+        .modal input { width: 100%; padding: 10px; margin: 10px 0; background: #40444b; border: none; color: white; border-radius: 4px; box-sizing: border-box; }
+        .modal-btns { display: flex; gap: 10px; margin-top: 15px; }
+        .modal-btns button { flex: 1; padding: 10px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
         
-        /* Inline Actions */
-        .edit-icon { cursor: pointer; margin-left: 8px; color: var(--grey); font-size: 0.8em; opacity: 0.3; }
-        td:hover .edit-icon { opacity: 1; color: var(--blurple); }
-        .btn-del { background: none; border: none; cursor: pointer; color: var(--grey); font-size: 1.1em; transition: 0.2s; }
-        .btn-del:hover { color: var(--red); transform: scale(1.2); }
-        
-        .edit-input { background: #40444b; color: white; border: 1px solid var(--blurple); border-radius: 3px; padding: 4px; width: 90%; }
-        #status { font-size: 0.85rem; color: var(--grey); background: #202225; padding: 8px 15px; border-radius: 20px; display: inline-block; margin-bottom: 20px; }
+        #status { font-size: 0.8rem; color: var(--grey); background: #202225; padding: 5px 15px; border-radius: 15px; }
     </style>
 </head>
 <body>
 
+<div id="modalOverlay">
+    <div class="modal">
+        <h3 id="modalTitle">Add Entry</h3>
+        <div id="modalInputs"></div>
+        <div class="modal-btns">
+            <button onclick="closeModal()" style="background: var(--grey);">Cancel</button>
+            <button onclick="submitModal()" style="background: var(--green); color: white;">Confirm</button>
+        </div>
+    </div>
+</div>
+
 <div class="container">
     <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h2>Coat Management System</h2>
-        <div id="status">📡 Connecting...</div>
+        <h2>Coat Database</h2>
+        <div id="status">Connecting...</div>
     </div>
 
-    <div class="header-flex">
-        <h3 style="margin:0">Divisions</h3>
-        <button class="btn-plus" onclick="createNew('ADD_DIVISION')" title="Add Division">+</button>
+    <div style="display: flex; align-items: center; gap: 10px; margin-top: 20px;">
+        <h3>Divisions</h3>
+        <button class="btn-plus" onclick="openModal('division')">+</button>
     </div>
     <table id="tableDivs">
-        <thead><tr><th>ID</th><th>Name</th><th>Guild ID</th><th>Roblox ID</th><th style="width:40px"></th></tr></thead>
+        <thead><tr><th>ID</th><th>Name</th><th>Guild</th><th>Roblox</th><th></th></tr></thead>
         <tbody></tbody>
     </table>
 
-    <div class="header-flex">
-        <h3 style="margin:0">Users</h3>
-        <button class="btn-plus" onclick="createNew('ADD_USER')" title="Add User">+</button>
+    <div style="display: flex; align-items: center; gap: 10px;">
+        <h3>Users</h3>
+        <button class="btn-plus" onclick="openModal('user')">+</button>
     </div>
     <table id="tableUsers">
-        <thead><tr><th>ID</th><th>Discord ID</th><th>EXP</th><th>Rank</th><th style="width:40px"></th></tr></thead>
+        <thead><tr><th>ID</th><th>Discord ID</th><th>EXP</th><th>Rank</th><th></th></tr></thead>
         <tbody></tbody>
     </table>
 </div>
@@ -59,88 +69,76 @@
 <script src="config.js"></script>
 <script>
     let supabaseClient;
+    let currentModalType = '';
 
     window.onload = () => {
         supabaseClient = supabase.createClient(window.ENV_URL, window.ENV_KEY);
-        
-        supabaseClient.channel('db_sync').on('postgres_changes', { 
-            event: 'UPDATE', schema: 'public', table: 'bot_responses', filter: 'id=eq.1' 
-        }, payload => {
+        supabaseClient.channel('db_sync').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bot_responses', filter: 'id=eq.1' }, payload => {
             renderUI(payload.new.data);
-            document.getElementById('status').innerText = "🟢 Database In Sync";
+            document.getElementById('status').innerText = "🟢 Synced";
         }).subscribe();
-
         requestSync();
     };
 
-    async function requestSync() {
-        await supabaseClient.from('commands').insert([{ message: JSON.stringify({command: "GET_DB_VIEW"}), status: 'pending' }]);
+    const requestSync = () => supabaseClient.from('commands').insert([{ message: JSON.stringify({command: "GET_DB_VIEW"}), status: 'pending' }]);
+
+    function openModal(type) {
+        currentModalType = type;
+        const container = document.getElementById('modalInputs');
+        const title = document.getElementById('modalTitle');
+        container.innerHTML = '';
+        
+        if(type === 'division') {
+            title.innerText = "New Division";
+            container.innerHTML = `
+                <input id="m_name" placeholder="Division Name">
+                <input id="m_guild" type="number" placeholder="Guild ID">
+                <input id="m_roblox" type="number" placeholder="Roblox ID">`;
+        } else {
+            title.innerText = "New User";
+            container.innerHTML = `
+                <input id="m_discord" placeholder="Discord ID">
+                <input id="m_div" type="number" placeholder="Division ID">
+                <input id="m_rank" placeholder="Rank">`;
+        }
+        document.getElementById('modalOverlay').style.display = 'flex';
     }
 
-    async function createNew(command) {
-        document.getElementById('status').innerText = "⏳ Adding new record...";
-        // Note: For divisions, the bot adds a placeholder. For users, it adds a recruit.
-        await supabaseClient.from('commands').insert([{ 
-            message: JSON.stringify({
-                command: command, 
-                data: { name: "New Division", guild_id: 0, roblox_id: 0 } // Default for ADD_DIVISION
-            }), 
-            status: 'pending' 
-        }]);
-    }
+    function closeModal() { document.getElementById('modalOverlay').style.display = 'none'; }
 
-    async function deleteRow(table, id) {
-        if (!confirm(`Are you sure you want to delete ID ${id} from ${table}?`)) return;
-        document.getElementById('status').innerText = "🗑️ Deleting...";
-        await supabaseClient.from('commands').insert([{ 
-            message: JSON.stringify({command: "DELETE_ROW", data: { table, id }}), 
-            status: 'pending' 
-        }]);
+    async function submitModal() {
+        let payload = { command: currentModalType === 'division' ? 'ADD_DIVISION' : 'ADD_USER', data: {} };
+        if(currentModalType === 'division') {
+            payload.data = { name: document.getElementById('m_name').value, guild_id: document.getElementById('m_guild').value, roblox_id: document.getElementById('m_roblox').value };
+        } else {
+            payload.data = { discord_id: document.getElementById('m_discord').value, division_id: document.getElementById('m_div').value, rank: document.getElementById('m_rank').value, exp: 0 };
+        }
+        document.getElementById('status').innerText = "💾 Saving...";
+        await supabaseClient.from('commands').insert([{ message: JSON.stringify(payload), status: 'pending' }]);
+        closeModal();
     }
 
     function renderUI(data) {
-        // DIVISIONS
-        const divBody = document.querySelector("#tableDivs tbody");
-        divBody.innerHTML = data.divisions.map(d => `
-            <tr>
-                <td>${d.id}</td>
-                <td onclick="makeEditable(this, 'divisions', 'name', ${d.id})">${d.name} <span class="edit-icon">✏️</span></td>
-                <td onclick="makeEditable(this, 'divisions', 'guild_id', ${d.id})">${d.guild_id} <span class="edit-icon">✏️</span></td>
-                <td onclick="makeEditable(this, 'divisions', 'roblox_id', ${d.id})">${d.roblox_id} <span class="edit-icon">✏️</span></td>
-                <td><button class="btn-del" onclick="deleteRow('divisions', ${d.id})">🗑️</button></td>
-            </tr>
-        `).join('');
-
-        // USERS
-        const userBody = document.querySelector("#tableUsers tbody");
-        userBody.innerHTML = data.users.map(u => `
-            <tr>
-                <td>${u.id}</td>
-                <td onclick="makeEditable(this, 'users', 'discord_id', ${u.id})">${u.discord_id} <span class="edit-icon">✏️</span></td>
-                <td onclick="makeEditable(this, 'users', 'exp', ${u.id})">${u.exp} <span class="edit-icon">✏️</span></td>
-                <td onclick="makeEditable(this, 'users', 'rank', ${u.id})">${u.rank} <span class="edit-icon">✏️</span></td>
-                <td><button class="btn-del" onclick="deleteRow('users', ${u.id})">🗑️</button></td>
-            </tr>
-        `).join('');
+        const renderRow = (row, table, cols) => `<tr><td>${row.id}</td>${cols.map(c => `<td onclick="makeEditable(this,'${table}','${c}',${row.id})">${row[c]} <span class="edit-icon">✏️</span></td>`).join('')}<td><button class="btn-del" onclick="deleteRow('${table}',${row.id})">🗑️</button></td></tr>`;
+        document.querySelector("#tableDivs tbody").innerHTML = data.divisions.map(d => renderRow(d, 'divisions', ['name','guild_id','roblox_id'])).join('');
+        document.querySelector("#tableUsers tbody").innerHTML = data.users.map(u => renderRow(u, 'users', ['discord_id','exp','rank'])).join('');
     }
 
-    // --- SHARED EDIT LOGIC ---
+    async function deleteRow(table, id) {
+        if(!confirm("Delete this?")) return;
+        await supabaseClient.from('commands').insert([{ message: JSON.stringify({command:"DELETE_ROW", data:{table, id}}), status:'pending' }]);
+    }
+
     function makeEditable(cell, table, column, id) {
         if (cell.querySelector('input')) return;
-        const originalValue = cell.innerText.replace('✏️', '').trim();
-        cell.innerHTML = `<input type="text" class="edit-input" value="${originalValue}" onkeydown="handleKey(event, this, '${table}', '${column}', ${id})">`;
+        const val = cell.innerText.replace('✏️', '').trim();
+        cell.innerHTML = `<input style="width:90%; background:#40444b; color:white; border:1px solid var(--blurple);" value="${val}" onkeydown="if(event.key==='Enter') saveEdit(this,'${table}','${column}',${id})">`;
         cell.querySelector('input').focus();
     }
 
-    async function handleKey(event, input, table, column, id) {
-        if (event.key === 'Enter') {
-            const newValue = input.value;
-            document.getElementById('status').innerText = "💾 Saving changes...";
-            await supabaseClient.from('commands').insert([{ 
-                message: JSON.stringify({command: "UPDATE_VALUE", data: { table, column, id, newValue }}), 
-                status: 'pending' 
-            }]);
-        } else if (event.key === 'Escape') { requestSync(); }
+    async function saveEdit(input, table, column, id) {
+        document.getElementById('status').innerText = "💾 Saving...";
+        await supabaseClient.from('commands').insert([{ message: JSON.stringify({command:"UPDATE_VALUE", data:{table, column, id, newValue: input.value}}), status:'pending' }]);
     }
 </script>
 </body>
