@@ -71,15 +71,19 @@
 
     window.onload = async () => {
         supabaseClient = supabase.createClient(window.ENV_URL, window.ENV_KEY);
-
-        // 1. IMPORTANT: This "catches" the login from the URL redirect
-        const { data: { session }, error } = await supabaseClient.auth.getSession();
-
+    
+        // This listener detects the login the moment it happens
+        supabaseClient.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_IN' && session) {
+                console.log("User signed in:", session.user);
+                setupAuthenticatedSession(session.user);
+            }
+        });
+    
+        // Check if we already have a session
+        const { data: { session } } = await supabaseClient.auth.getSession();
         if (session) {
             setupAuthenticatedSession(session.user);
-        } else {
-            document.getElementById('authSection').style.display = 'block';
-            document.getElementById('status').innerText = "Please log in.";
         }
         // Setup Realtime
         supabaseClient.channel('db_sync').on('postgres_changes', { 
