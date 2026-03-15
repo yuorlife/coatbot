@@ -70,8 +70,16 @@
         <div id="tab-users" class="tab-content">
             <div class="card">
                 <h3 style="margin-top:0; color: var(--blurple);">Division Personnel</h3>
+                
+                <div class="admin-form" style="margin-bottom: 20px; border-bottom: 1px solid #40444b; padding-bottom: 20px;">
+                    <input id="newUserId" type="number" placeholder="User Discord ID">
+                    <input id="newUserExp" type="number" placeholder="Starting EXP" value="0">
+                    <input id="newUserRank" type="text" placeholder="Starting Rank" value="Recruit">
+                    <button class="btn btn-blurple" onclick="addNewUser()">➕ Add User</button>
+                </div>
+
                 <table id="tableUsers">
-                    <thead><tr><th>Discord ID</th><th>EXP</th><th>Rank</th></tr></thead>
+                    <thead><tr><th>Discord ID</th><th>EXP</th><th>Rank</th><th>Actions</th></tr></thead>
                     <tbody></tbody>
                 </table>
             </div>
@@ -198,6 +206,47 @@
         }]);
     }
 
+    // --- ADMIN & MANAGEMENT ACTIONS --- //
+
+    async function addNewUser() {
+        const divId = document.getElementById('divSelect').value;
+        if (!divId) return alert("Please select a division from the dropdown first!");
+
+        const payload = {
+            discord_id: document.getElementById('newUserId').value,
+            division_id: divId,
+            exp: document.getElementById('newUserExp').value || 0,
+            rank: document.getElementById('newUserRank').value || 'Recruit'
+        };
+
+        if (!payload.discord_id) return alert("Discord ID is required!");
+
+        document.getElementById('status').innerText = "⏳ Adding User...";
+        await supabaseClient.from('commands').insert([{ 
+            message: JSON.stringify({ command: "ADD_USER", discord_id: getDiscordId(), data: payload }), 
+            status: 'pending' 
+        }]);
+
+        document.getElementById('newUserId').value = '';
+        document.getElementById('newUserExp').value = '0';
+        document.getElementById('newUserRank').value = 'Recruit';
+
+        setTimeout(() => loadDivision(divId), 1500);
+    }
+
+    async function deleteRow(table, id) {
+        if (!confirm("Are you sure you want to delete this row?")) return;
+        
+        document.getElementById('status').innerText = "🧨 Deleting...";
+        await supabaseClient.from('commands').insert([{ 
+            message: JSON.stringify({ command: "DELETE_ROW", discord_id: getDiscordId(), data: { table: table, id: id } }), 
+            status: 'pending' 
+        }]);
+
+        const divId = document.getElementById('divSelect').value;
+        setTimeout(() => loadDivision(divId), 1500);
+    }
+
     async function submitNewDivision() {
         const payload = {
             name: document.getElementById('newDivName').value,
@@ -228,6 +277,8 @@
         }
     }
 
+    // --- DATA RENDERING --- //
+
     function handleBotUpdate(data) {
         const status = document.getElementById('status');
 
@@ -243,8 +294,13 @@
         }
 
         if (data.type === "DIV_DATA") {
-            document.querySelector("#tableUsers tbody").innerHTML = data.users.map(u => `<tr><td>${u.discord_id}</td><td onclick="makeEdit(this,'users','exp',${u.id})">${u.exp} <span class="edit-icon">✏️</span></td><td>${u.rank}</td></tr>`).join('');
+            // Render Users
+            document.querySelector("#tableUsers tbody").innerHTML = data.users.map(u => `<tr><td>${u.discord_id}</td><td onclick="makeEdit(this,'users','exp',${u.id})">${u.exp} <span class="edit-icon">✏️</span></td><td onclick="makeEdit(this,'users','rank',${u.id})">${u.rank} <span class="edit-icon">✏️</span></td><td><button class="btn btn-red" style="padding: 5px 10px;" onclick="deleteRow('users', ${u.id})">🗑️</button></td></tr>`).join('');
+            
+            // Render Ranks
             document.querySelector("#tableRanks tbody").innerHTML = data.ranks.map(r => `<tr><td>${r.rank}</td><td onclick="makeEdit(this,'ranks','exp',${r.id})">${r.exp} <span class="edit-icon">✏️</span></td><td onclick="makeEdit(this,'ranks','roblox_role_id',${r.id})">${r.roblox_role_id || 0} <span class="edit-icon">✏️</span></td><td onclick="makeEdit(this,'ranks','discord_role_id',${r.id})">${r.discord_role_id || 0} <span class="edit-icon">✏️</span></td></tr>`).join('');
+            
+            // Render Settings
             document.querySelector("#tableSettings tbody").innerHTML = data.settings.map(s => `<tr><td>${s.setting}</td><td onclick="makeEdit(this,'settings','value',${s.id})">${s.value} <span class="edit-icon">✏️</span></td></tr>`).join('');
             
             status.innerText = "🟢 Synced (Div #" + data.active_div + ")";
