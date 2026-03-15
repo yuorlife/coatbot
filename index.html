@@ -89,8 +89,16 @@
     };
 
     async function login() {
-        await supabaseClient.auth.signInWithOAuth({ provider: 'discord' });
-    }
+    await supabaseClient.auth.signInWithOAuth({
+        provider: 'discord',
+        options: {
+            // "guilds" allows the bot to see which servers the user is in
+            scopes: 'identify guilds',
+            // This forces the redirect to your site instead of localhost
+            redirectTo: window.location.origin 
+        }
+    });
+}
 
     async function logout() {
         await supabaseClient.auth.signOut();
