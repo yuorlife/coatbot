@@ -2,43 +2,42 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Coat Bot Database Manager</title>
+    <title>Coat Bot Admin</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        :root { --bg: #2c2f33; --card: #23272a; --blurple: #5865F2; --green: #43b581; --white: #ffffff; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--white); padding: 20px; }
-        .container { max-width: 900px; margin: 0 auto; background: var(--card); padding: 25px; border-radius: 12px; }
-        .section { background: #2f3136; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-        input { padding: 10px; margin: 5px; border-radius: 4px; border: none; background: #40444b; color: white; width: 180px; }
-        button { padding: 10px 20px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; background: var(--blurple); color: white; }
-        .btn-add { background: var(--green); width: 100%; margin-top: 10px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9em; }
-        th, td { text-align: left; padding: 10px; border-bottom: 1px solid #40444b; }
-        th { color: #99aab5; text-transform: uppercase; font-size: 0.75rem; }
+        :root { --bg: #2c2f33; --card: #23272a; --blurple: #5865F2; --green: #43b581; --grey: #99aab5; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; background: var(--card); padding: 20px; border-radius: 12px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 30px; background: #2f3136; border-radius: 8px; overflow: hidden; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #40444b; }
+        th { background: #202225; color: var(--grey); font-size: 0.8rem; text-transform: uppercase; }
+        
+        /* The Pencil Icon */
+        .edit-icon { cursor: pointer; margin-left: 8px; color: var(--grey); font-size: 0.9em; opacity: 0.5; transition: 0.2s; }
+        td:hover .edit-icon { opacity: 1; color: var(--blurple); }
+        
+        .edit-input { background: #40444b; color: white; border: 1px solid var(--blurple); border-radius: 3px; padding: 4px; width: 80%; }
+        #status { font-style: italic; color: var(--grey); margin-bottom: 10px; }
+        h3 { border-left: 4px solid var(--blurple); padding-left: 10px; margin-top: 30px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>Coat Bot Data Management</h2>
-    <p id="status" style="color: #99aab5;">Connecting...</p>
-
-    <div class="section">
-        <h3>➕ Add Division</h3>
-        <input type="text" id="divName" placeholder="Name">
-        <input type="number" id="divGuild" placeholder="Guild ID">
-        <input type="number" id="divRoblox" placeholder="Roblox ID">
-        <button class="btn-add" onclick="addDivision()">Insert into SQLite</button>
-    </div>
+    <h2>Coat Database Control</h2>
+    <div id="status">Connecting...</div>
 
     <h3>Divisions</h3>
-    <table id="tableDivs"><thead><tr><th>ID</th><th>Name</th><th>Guild</th><th>Roblox</th></tr></thead><tbody></tbody></table>
+    <table id="tableDivs">
+        <thead><tr><th>ID</th><th>Name</th><th>Guild ID</th><th>Roblox ID</th></tr></thead>
+        <tbody></tbody>
+    </table>
 
     <h3>Users</h3>
-    <table id="tableUsers"><thead><tr><th>Discord ID</th><th>Div ID</th><th>EXP</th><th>Rank</th><th>Leader?</th></tr></thead><tbody></tbody></table>
-    
-    <h3>Settings</h3>
-    <table id="tableSettings"><thead><tr><th>Div ID</th><th>Setting</th><th>Value</th></tr></thead><tbody></tbody></table>
+    <table id="tableUsers">
+        <thead><tr><th>ID</th><th>Discord ID</th><th>EXP</th><th>Rank</th></tr></thead>
+        <tbody></tbody>
+    </table>
 </div>
 
 <script src="config.js"></script>
@@ -48,47 +47,71 @@
     window.onload = () => {
         supabaseClient = supabase.createClient(window.ENV_URL, window.ENV_KEY);
         
-        // Realtime Listener
         supabaseClient.channel('db_sync').on('postgres_changes', { 
             event: 'UPDATE', schema: 'public', table: 'bot_responses', filter: 'id=eq.1' 
         }, payload => {
-            updateUI(payload.new.data);
-            document.getElementById('status').innerText = "Database Synced.";
+            renderUI(payload.new.data);
+            document.getElementById('status').innerText = "Update synced!";
         }).subscribe();
 
         requestSync();
     };
 
     async function requestSync() {
-        document.getElementById('status').innerText = "Requesting data...";
         await supabaseClient.from('commands').insert([{ message: JSON.stringify({command: "GET_DB_VIEW"}), status: 'pending' }]);
     }
 
-    async function addDivision() {
-        const payload = {
-            command: "ADD_DIVISION",
-            data: {
-                name: document.getElementById('divName').value,
-                guild_id: document.getElementById('divGuild').value,
-                roblox_id: document.getElementById('divRoblox').value
-            }
-        };
-        await supabaseClient.from('commands').insert([{ message: JSON.stringify(payload), status: 'pending' }]);
-        document.getElementById('status').innerText = "Add request sent!";
+    function renderUI(data) {
+        document.getElementById('status').innerText = "Data loaded.";
+        
+        // Render Divisions
+        const divBody = document.querySelector("#tableDivs tbody");
+        divBody.innerHTML = data.divisions.map(d => `
+            <tr>
+                <td>${d.id}</td>
+                <td onclick="makeEditable(this, 'divisions', 'name', ${d.id})">${d.name} <span class="edit-icon">✏️</span></td>
+                <td onclick="makeEditable(this, 'divisions', 'guild_id', ${d.id})">${d.guild_id} <span class="edit-icon">✏️</span></td>
+                <td onclick="makeEditable(this, 'divisions', 'roblox_id', ${d.id})">${d.roblox_id} <span class="edit-icon">✏️</span></td>
+            </tr>
+        `).join('');
+
+        // Render Users (Example columns)
+        const userBody = document.querySelector("#tableUsers tbody");
+        userBody.innerHTML = data.users.map(u => `
+            <tr>
+                <td>${u.id}</td>
+                <td onclick="makeEditable(this, 'users', 'discord_id', ${u.id})">${u.discord_id} <span class="edit-icon">✏️</span></td>
+                <td onclick="makeEditable(this, 'users', 'exp', ${u.id})">${u.exp} <span class="edit-icon">✏️</span></td>
+                <td onclick="makeEditable(this, 'users', 'rank', ${u.id})">${u.rank} <span class="edit-icon">✏️</span></td>
+            </tr>
+        `).join('');
     }
 
-    function updateUI(data) {
-        // Render Divisions
-        document.querySelector("#tableDivs tbody").innerHTML = data.divisions.map(d => 
-            `<tr><td>${d.id}</td><td>${d.name}</td><td>${d.guild_id}</td><td>${d.roblox_id}</td></tr>`).join('');
-        
-        // Render Users
-        document.querySelector("#tableUsers tbody").innerHTML = data.users.map(u => 
-            `<tr><td>${u.discord_id}</td><td>${u.division_id}</td><td>${u.exp}</td><td>${u.rank}</td><td>${u.leader ? '✅' : '❌'}</td></tr>`).join('');
+    function makeEditable(cell, table, column, id) {
+        if (cell.querySelector('input')) return; // Already editing
 
-        // Render Settings
-        document.querySelector("#tableSettings tbody").innerHTML = data.settings.map(s => 
-            `<tr><td>${s.division_id}</td><td>${s.setting}</td><td>${s.value}</td></tr>`).join('');
+        const originalValue = cell.innerText.replace('✏️', '').trim();
+        cell.innerHTML = `<input type="text" class="edit-input" value="${originalValue}" onkeydown="handleKey(event, this, '${table}', '${column}', ${id})">`;
+        cell.querySelector('input').focus();
+    }
+
+    async function handleKey(event, input, table, column, id) {
+        if (event.key === 'Enter') {
+            const newValue = input.value;
+            document.getElementById('status').innerText = "Saving...";
+            
+            const payload = {
+                command: "UPDATE_VALUE",
+                data: { table, column, id, newValue }
+            };
+
+            await supabaseClient.from('commands').insert([{ message: JSON.stringify(payload), status: 'pending' }]);
+            
+            // Note: The cell will update automatically via the Realtime listener 
+            // once the bot processes the change.
+        } else if (event.key === 'Escape') {
+            requestSync(); // Re-render to cancel
+        }
     }
 </script>
 </body>
