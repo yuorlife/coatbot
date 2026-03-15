@@ -71,10 +71,10 @@
 
     window.onload = async () => {
         supabaseClient = supabase.createClient(window.ENV_URL, window.ENV_KEY);
-    
+
         // 1. IMPORTANT: This "catches" the login from the URL redirect
         const { data: { session }, error } = await supabaseClient.auth.getSession();
-        
+
         if (session) {
             setupAuthenticatedSession(session.user);
         } else {
@@ -90,16 +90,20 @@
     };
 
     async function login() {
-    await supabaseClient.auth.signInWithOAuth({
-        provider: 'discord',
-        options: {
-            // "guilds" allows the bot to see which servers the user is in
-            scopes: 'identify guilds',
-            // This forces the redirect to your site instead of localhost
-            redirectTo: window.location.origin 
-        }
-    });
-}
+        // Get the current URL of the page (e.g., your GitHub Pages link)
+        const currentUrl = window.location.origin + window.location.pathname;
+
+        const { error } = await supabaseClient.auth.signInWithOAuth({
+            provider: 'discord',
+            options: {
+                scopes: 'identify email guilds',
+                redirectTo: currentUrl // Forces Supabase to send you back HERE
+            }
+        });
+
+        if (error) console.error("Login error:", error.message);
+    }
+    
 
     async function logout() {
         await supabaseClient.auth.signOut();
