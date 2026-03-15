@@ -69,99 +69,68 @@
 <script src="config.js"></script>
 <script>
     let supabaseClient;
-    let currentModalType = '';
 
+    // Use a helper to send commands safely
+    async function sendCommand(payload) {
+        if (!supabaseClient) {
+            console.error("Client not ready yet. Retrying...");
+            return false;
+        }
+        try {
+            const { error } = await supabaseClient
+                .from('commands')
+                .insert([{ message: JSON.stringify(payload), status: 'pending' }]);
+            if (error) throw error;
+            return true;
+        } catch (err) {
+            console.error("Command failed:", err);
+            return false;
+        }
+    }
+
+    async function requestSync() {
+        document.getElementById('status').innerText = "⏳ Syncing with Bot...";
+        const success = await sendCommand({ command: "GET_DB_VIEW" });
+        if (!success) {
+            // If it failed (client wasn't ready), try again in 1 second
+            setTimeout(requestSync, 1000);
+        }
+    }
+
+    // Main Init Logic
     window.onload = async () => {
+        const status = document.getElementById('status');
+
+        // 1. Wait for config.js variables to appear
         if (!window.ENV_URL || !window.ENV_KEY) {
-            document.getElementById('status').innerText = "Config Error: Check GitHub Secrets.";
+            status.innerText = "❌ Config Missing (Check GitHub Secrets)";
             return;
         }
-    
-        // 1. Initialize Supabase
+
+        // 2. Initialize Client
         supabaseClient = supabase.createClient(window.ENV_URL, window.ENV_KEY);
-        document.getElementById('status').innerText = "Connected. Initializing Realtime...";
-    
-        // 2. Setup Realtime Listener
-        supabaseClient
+        status.innerText = "🔌 Connecting to Realtime...";
+
+        // 3. Setup Listener FIRST
+        const channel = supabaseClient
             .channel('db_sync')
             .on('postgres_changes', { 
                 event: 'UPDATE', 
                 schema: 'public', 
-                table: 'bot_responses',
+                table: 'bot_responses', 
                 filter: 'id=eq.1' 
             }, payload => {
-                console.log('Bot Response Received:', payload.new.data);
-                renderUI(payload.new.data); // Make sure this matches your function name
-                document.getElementById('status').innerText = "🟢 Synced";
+                console.log('✅ Update received from Bot');
+                renderUI(payload.new.data);
+                status.innerText = "🟢 System Active";
             })
-            .subscribe();
-        
-        // 3. IMPORTANT: Wait a tiny bit for the channel to connect, THEN request
-        setTimeout(() => {
-            requestSync();
-        }, 500); 
+            .subscribe((status) => {
+                if (status === 'SUBSCRIBED') {
+                    console.log("📡 Realtime Connected. Requesting Data...");
+                    requestSync(); // Fire only once the listener is actually live
+                }
+            });
     };
-
-    const requestSync = () => supabaseClient.from('commands').insert([{ message: JSON.stringify({command: "GET_DB_VIEW"}), status: 'pending' }]);
-
-    function openModal(type) {
-        currentModalType = type;
-        const container = document.getElementById('modalInputs');
-        const title = document.getElementById('modalTitle');
-        container.innerHTML = '';
-        
-        if(type === 'division') {
-            title.innerText = "New Division";
-            container.innerHTML = `
-                <input id="m_name" placeholder="Division Name">
-                <input id="m_guild" type="number" placeholder="Guild ID">
-                <input id="m_roblox" type="number" placeholder="Roblox ID">`;
-        } else {
-            title.innerText = "New User";
-            container.innerHTML = `
-                <input id="m_discord" placeholder="Discord ID">
-                <input id="m_div" type="number" placeholder="Division ID">
-                <input id="m_rank" placeholder="Rank">`;
-        }
-        document.getElementById('modalOverlay').style.display = 'flex';
-    }
-
-    function closeModal() { document.getElementById('modalOverlay').style.display = 'none'; }
-
-    async function submitModal() {
-        let payload = { command: currentModalType === 'division' ? 'ADD_DIVISION' : 'ADD_USER', data: {} };
-        if(currentModalType === 'division') {
-            payload.data = { name: document.getElementById('m_name').value, guild_id: document.getElementById('m_guild').value, roblox_id: document.getElementById('m_roblox').value };
-        } else {
-            payload.data = { discord_id: document.getElementById('m_discord').value, division_id: document.getElementById('m_div').value, rank: document.getElementById('m_rank').value, exp: 0 };
-        }
-        document.getElementById('status').innerText = "💾 Saving...";
-        await supabaseClient.from('commands').insert([{ message: JSON.stringify(payload), status: 'pending' }]);
-        closeModal();
-    }
-
-    function renderUI(data) {
-        const renderRow = (row, table, cols) => `<tr><td>${row.id}</td>${cols.map(c => `<td onclick="makeEditable(this,'${table}','${c}',${row.id})">${row[c]} <span class="edit-icon">✏️</span></td>`).join('')}<td><button class="btn-del" onclick="deleteRow('${table}',${row.id})">🗑️</button></td></tr>`;
-        document.querySelector("#tableDivs tbody").innerHTML = data.divisions.map(d => renderRow(d, 'divisions', ['name','guild_id','roblox_id'])).join('');
-        document.querySelector("#tableUsers tbody").innerHTML = data.users.map(u => renderRow(u, 'users', ['discord_id','exp','rank'])).join('');
-    }
-
-    async function deleteRow(table, id) {
-        if(!confirm("Delete this?")) return;
-        await supabaseClient.from('commands').insert([{ message: JSON.stringify({command:"DELETE_ROW", data:{table, id}}), status:'pending' }]);
-    }
-
-    function makeEditable(cell, table, column, id) {
-        if (cell.querySelector('input')) return;
-        const val = cell.innerText.replace('✏️', '').trim();
-        cell.innerHTML = `<input style="width:90%; background:#40444b; color:white; border:1px solid var(--blurple);" value="${val}" onkeydown="if(event.key==='Enter') saveEdit(this,'${table}','${column}',${id})">`;
-        cell.querySelector('input').focus();
-    }
-
-    async function saveEdit(input, table, column, id) {
-        document.getElementById('status').innerText = "💾 Saving...";
-        await supabaseClient.from('commands').insert([{ message: JSON.stringify({command:"UPDATE_VALUE", data:{table, column, id, newValue: input.value}}), status:'pending' }]);
-    }
 </script>
 </body>
 </html>
