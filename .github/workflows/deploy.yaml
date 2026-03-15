@@ -16,10 +16,10 @@ jobs:
 
       - name: Inject Secrets into HTML
         run: |
-          sed -i "s|VITE_SUPABASE_URL|${{ secrets.SUPABASE_URL }}|g" index.html
-          sed -i "s|VITE_SUPABASE_ANON_KEY|${{ secrets.SUPABASE_ANON_KEY }}|g" index.html
-          # Verify for debugging (This won't show your secrets in logs, don't worry)
-          grep "supabase.co" index.html || echo "URL not found after injection"
+          # Use a different delimiter (@) just in case your URL has pipes
+          # And we remove the VITE_ prefix to match exactly
+          sed -i 's@VITE_SUPABASE_URL@${{ secrets.SUPABASE_URL }}@g' index.html
+          sed -i 's@VITE_SUPABASE_ANON_KEY@${{ secrets.SUPABASE_ANON_KEY }}@g' index.html
 
       - name: Deploy
         uses: JamesIves/github-pages-deploy-action@v4
