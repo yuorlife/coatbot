@@ -71,7 +71,7 @@
 
     window.onload = async () => {
         supabaseClient = supabase.createClient(window.ENV_URL, window.ENV_KEY);
-    
+
         // This listener detects the login the moment it happens
         supabaseClient.auth.onAuthStateChange((event, session) => {
             if (event === 'SIGNED_IN' && session) {
@@ -79,7 +79,7 @@
                 setupAuthenticatedSession(session.user);
             }
         });
-    
+
         // Check if we already have a session
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (session) {
@@ -136,35 +136,42 @@
     }
 
     function renderUI(data) {
-        if (data.error) {
-            document.getElementById('status').innerText = "❌ " + data.error;
+        const status = document.getElementById('status');
+        
+        // 1. Check if the bot sent an error (Permission denied)
+        if (!data || data.error) {
+            status.innerText = "❌ " + (data?.error || "Unknown Error");
+            // Clear the tables so old data doesn't stay there
+            document.querySelector("#tableUsers tbody").innerHTML = "";
+            document.querySelector("#tableRanks tbody").innerHTML = "";
             return;
         }
-
+    
+        // 2. Safety check: Ensure users and ranks exist before calling .map()
+        const users = data.users || [];
+        const ranks = data.ranks || [];
+    
         // Render Users
         const userBody = document.querySelector("#tableUsers tbody");
-        userBody.innerHTML = data.users.map(u => `
+        userBody.innerHTML = users.map(u => `
             <tr>
                 <td>${u.discord_id}</td>
-                <td onclick="makeEditable(this,'users','exp',${u.id})">${u.exp} <span class="edit-icon">✏️</span></td>
-                <td onclick="makeEditable(this,'users','rank',${u.id})">${u.rank} <span class="edit-icon">✏️</span></td>
+                <td onclick="makeEditable(this,'users','exp',${u.id})">${u.exp} ✏️</td>
+                <td onclick="makeEditable(this,'users','rank',${u.id})">${u.rank} ✏️</td>
             </tr>
         `).join('');
-
+        
         // Render Ranks
         const rankBody = document.querySelector("#tableRanks tbody");
-        rankBody.innerHTML = data.ranks.map(r => `
+        rankBody.innerHTML = ranks.map(r => `
             <tr>
-                <td onclick="makeEditable(this,'ranks','rank',${r.id})">${r.rank} <span class="edit-icon">✏️</span></td>
-                <td onclick="makeEditable(this,'ranks','exp',${r.id})">${r.exp} <span class="edit-icon">✏️</span></td>
-                <td>
-                    ${r.officer ? '<span class="badge badge-officer">OFFICER</span>' : ''}
-                    ${r.leader ? '<span class="badge badge-leader">LEADER</span>' : ''}
-                </td>
+                <td onclick="makeEditable(this,'ranks','rank',${r.id})">${r.rank} ✏️</td>
+                <td onclick="makeEditable(this,'ranks','exp',${r.id})">${r.exp} ✏️</td>
+                <td>${r.officer ? '✅' : '❌'}</td>
             </tr>
         `).join('');
-
-        document.getElementById('status').innerText = "🟢 Data Synced";
+        
+        status.innerText = "🟢 Data Synced";
     }
 
     function makeEditable(cell, table, column, id) {
