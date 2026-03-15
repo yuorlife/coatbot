@@ -20,11 +20,11 @@
         .card { background: var(--card); padding: 25px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
         .user-info { margin-left: auto; font-size: 0.85rem; display: flex; align-items: center; gap: 15px; color: var(--grey); }
         
-        .admin-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; background: #2f3136; padding: 20px; border-radius: 8px; margin-top: 15px; }
-        input, select { background: #40444b; color: white; border: 1px solid #4f545c; padding: 10px; border-radius: 5px; outline: none; transition: 0.2s; }
+        .admin-form { display: grid; grid-template-columns: 1fr; gap: 15px; background: #2f3136; padding: 20px; border-radius: 8px; margin-top: 15px; }
+        input, select { background: #40444b; color: white; border: 1px solid #4f545c; padding: 10px; border-radius: 5px; outline: none; transition: 0.2s; font-size: 1rem; }
         input:focus { border-color: var(--blurple); }
         
-        .btn { padding: 10px 20px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; color: white; transition: 0.2s; }
+        .btn { padding: 10px 20px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; color: white; transition: 0.2s; text-align: center; }
         .btn:active { transform: scale(0.98); }
         .btn-green { background: var(--green); }
         .btn-blurple { background: var(--blurple); }
@@ -35,6 +35,14 @@
         th { background: #18191c; color: var(--grey); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; }
         .edit-input { width: 90%; background: #40444b; color: white; border: 1px solid var(--blurple); padding: 5px; border-radius: 4px; }
         .edit-icon { cursor: pointer; opacity: 0.4; font-size: 0.8em; }
+
+        /* The little Plus Buttons */
+        .add-btn { background: var(--blurple); color: white; padding: 2px 8px; border-radius: 50%; font-size: 0.8rem; cursor: pointer; margin-left: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.5); display: inline-flex; align-items: center; justify-content: center; }
+        .add-btn:hover { background: #7289da; }
+
+        /* Modal Overlay */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; display: flex; justify-content: center; align-items: center; }
+        .modal-card { background: var(--card); padding: 30px; border-radius: 12px; min-width: 350px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); }
     </style>
 </head>
 <body>
@@ -43,6 +51,17 @@
     <h2>Coat System</h2>
     <p style="color:var(--grey)">Secure Administrative Dashboard</p>
     <button class="btn btn-blurple" style="width: 100%; padding: 15px; margin-top: 20px;" onclick="login()">Login with Discord</button>
+</div>
+
+<div id="modalOverlay" class="modal-overlay hidden">
+    <div class="modal-card">
+        <h2 id="modalTitle" style="margin-top:0; color:var(--blurple);">Add Item</h2>
+        <div id="modalFields" class="admin-form"></div>
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button class="btn btn-green" style="flex:1;" onclick="submitModal()">Save</button>
+            <button class="btn btn-red" style="flex:1;" onclick="closeModal()">Cancel</button>
+        </div>
+    </div>
 </div>
 
 <div id="mainUI" class="hidden">
@@ -60,26 +79,22 @@
     </div>
 
     <div class="container">
-        <div class="card" style="border-left: 5px solid var(--blurple);">
-            <label style="font-weight: bold; color: var(--grey); margin-right: 10px;">Managing Scope:</label>
+        <div class="card" style="border-left: 5px solid var(--blurple); display: flex; align-items: center;">
+            <label style="font-weight: bold; color: var(--grey); margin-right: 15px;">Managing Scope:</label>
             <select id="divSelect" onchange="loadDivision(this.value)">
                 <option value="">-- Choose a Division --</option>
             </select>
+            <span id="btnMakeDiv" class="add-btn hidden" onclick="openModal('division')" title="Add New Division">➕</span>
         </div>
 
         <div id="tab-users" class="tab-content">
             <div class="card">
-                <h3 style="margin-top:0; color: var(--blurple);">Division Personnel</h3>
-                
-                <div class="admin-form" style="margin-bottom: 20px; border-bottom: 1px solid #40444b; padding-bottom: 20px;">
-                    <input id="newUserId" type="number" placeholder="User Discord ID">
-                    <input id="newUserExp" type="number" placeholder="Starting EXP" value="0">
-                    <input id="newUserRank" type="text" placeholder="Starting Rank" value="Recruit">
-                    <button class="btn btn-blurple" onclick="addNewUser()">➕ Add User</button>
-                </div>
-
+                <h3 style="margin-top:0; color: var(--blurple);">
+                    Division Personnel 
+                    <span class="add-btn" onclick="openModal('user')" title="Add User">➕</span>
+                </h3>
                 <table id="tableUsers">
-                    <thead><tr><th>Discord ID</th><th>EXP</th><th>Rank</th><th>Actions</th></tr></thead>
+                    <thead><tr><th>Discord ID</th><th>EXP</th><th>Rank</th><th>Action</th></tr></thead>
                     <tbody></tbody>
                 </table>
             </div>
@@ -87,9 +102,12 @@
 
         <div id="tab-ranks" class="tab-content hidden">
             <div class="card">
-                <h3 style="margin-top:0; color: var(--blurple);">Rank Requirements</h3>
+                <h3 style="margin-top:0; color: var(--blurple);">
+                    Rank Requirements 
+                    <span class="add-btn" onclick="openModal('rank')" title="Add Rank">➕</span>
+                </h3>
                 <table id="tableRanks">
-                    <thead><tr><th>Rank Name</th><th>Min EXP</th><th>Roblox Role ID</th><th>Discord Role ID</th></tr></thead>
+                    <thead><tr><th>Rank Name</th><th>Min EXP</th><th>Roblox ID</th><th>Discord ID</th><th>Action</th></tr></thead>
                     <tbody></tbody>
                 </table>
             </div>
@@ -106,24 +124,12 @@
         </div>
 
         <div id="tab-admin" class="tab-content hidden">
-            <div class="card">
-                <h3 style="margin-top:0; color: var(--blurple);">Create New Division</h3>
-                <div class="admin-form">
-                    <input id="newDivName" placeholder="Division Name">
-                    <input id="newDivGuild" type="number" placeholder="Discord Guild ID">
-                    <input id="newDivRoblox" type="number" placeholder="Roblox Group ID">
-                    <button class="btn btn-green" onclick="submitNewDivision()">Add Division</button>
-                </div>
-            </div>
-
             <div class="card" style="border: 1px solid var(--red);">
                 <h3 style="color: var(--red); margin-top:0;">Danger Zone</h3>
-                <p style="font-size: 0.85rem; color: var(--grey);">Select a division to permanently delete it and all its associated data.</p>
-                <div class="admin-form">
-                    <select id="deleteDivSelect">
-                        <option value="">-- Select Division to Delete --</option>
-                    </select>
-                    <button class="btn btn-red" onclick="deleteDivision()">Delete Permanently</button>
+                <p style="font-size: 0.85rem; color: var(--grey);">Permanently wipe a division and all its data.</p>
+                <div style="display: flex; gap: 15px; margin-top: 15px;">
+                    <select id="deleteDivSelect" style="flex: 1;"><option value="">-- Select Division to Delete --</option></select>
+                    <button class="btn btn-red" onclick="deleteDivision()">Delete</button>
                 </div>
             </div>
         </div>
@@ -134,6 +140,8 @@
 <script>
     let supabaseClient;
     let currentUser;
+    let currentRanks = []; // Stores the latest ranks for the dropdown
+    let currentModalType = '';
     const MY_ID = "708656021001732107"; 
 
     window.onload = async () => {
@@ -159,15 +167,13 @@
 
         if (getDiscordId() === MY_ID) {
             document.getElementById('adminTab').classList.remove('hidden');
+            document.getElementById('btnMakeDiv').classList.remove('hidden');
         }
-
         refreshDivList();
     }
 
     function getDiscordId() {
-        return currentUser.user_metadata?.provider_id || 
-               currentUser.app_metadata?.provider_id || 
-               currentUser.identities?.find(i => i.provider === 'discord')?.id;
+        return currentUser.user_metadata?.provider_id || currentUser.app_metadata?.provider_id || currentUser.identities?.find(i => i.provider === 'discord')?.id;
     }
 
     function switchTab(name, el) {
@@ -178,148 +184,149 @@
     }
 
     async function login() {
-        await supabaseClient.auth.signInWithOAuth({ 
-            provider: 'discord', 
-            options: { scopes: 'identify guilds', redirectTo: window.location.origin + window.location.pathname } 
-        });
+        await supabaseClient.auth.signInWithOAuth({ provider: 'discord', options: { scopes: 'identify guilds', redirectTo: window.location.origin + window.location.pathname } });
     }
 
     async function logout() { await supabaseClient.auth.signOut(); window.location.reload(); }
 
     async function refreshDivList() {
-        const dId = getDiscordId();
-        if (!dId) return alert("Error: Could not extract Discord ID.");
-        
-        document.getElementById('status').innerText = "⏳ Verifying...";
-        await supabaseClient.from('commands').insert([{ 
-            message: JSON.stringify({ command: "GET_AUTHORIZED_DATA", discord_id: dId }), 
-            status: 'pending' 
-        }]);
+        await supabaseClient.from('commands').insert([{ message: JSON.stringify({ command: "GET_AUTHORIZED_DATA", discord_id: getDiscordId() }), status: 'pending' }]);
     }
 
     async function loadDivision(id) {
         if(!id) return;
         document.getElementById('status').innerText = "⏳ Loading Data...";
-        await supabaseClient.from('commands').insert([{ 
-            message: JSON.stringify({ command: "GET_DIVISION_DATA", data: { division_id: id } }), 
-            status: 'pending' 
-        }]);
+        await supabaseClient.from('commands').insert([{ message: JSON.stringify({ command: "GET_DIVISION_DATA", data: { division_id: id } }), status: 'pending' }]);
     }
 
-    // --- ADMIN & MANAGEMENT ACTIONS --- //
+    // --- MODAL SYSTEM --- //
+    function openModal(type) {
+        currentModalType = type;
+        const title = document.getElementById('modalTitle');
+        const fields = document.getElementById('modalFields');
+        fields.innerHTML = '';
 
-    async function addNewUser() {
+        if (type === 'division') {
+            title.innerText = 'Create New Division';
+            fields.innerHTML = `
+                <input id="m_name" placeholder="Division Name">
+                <input id="m_guild" type="number" placeholder="Discord Guild ID">
+                <input id="m_roblox" type="number" placeholder="Roblox Group ID">
+            `;
+        } else if (type === 'user') {
+            title.innerText = 'Add User';
+            const rankOpts = currentRanks.map(r => `<option value="${r.rank}">${r.rank}</option>`).join('');
+            fields.innerHTML = `
+                <input id="m_uid" type="number" placeholder="Discord User ID">
+                <select id="m_urank">
+                    <option value="" disabled selected>-- Select Initial Rank --</option>
+                    ${rankOpts}
+                </select>
+                <small style="color:var(--grey); margin-top:-10px;">EXP and other details will be handled by the bot.</small>
+            `;
+        } else if (type === 'rank') {
+            title.innerText = 'Add New Rank';
+            fields.innerHTML = `
+                <input id="m_rname" placeholder="Rank Name">
+                <input id="m_rexp" type="number" placeholder="Required EXP (e.g. 100)">
+                <input id="m_rroblox" type="number" placeholder="Roblox Role ID">
+                <input id="m_rdiscord" type="number" placeholder="Discord Role ID">
+            `;
+        }
+
+        document.getElementById('modalOverlay').classList.remove('hidden');
+    }
+
+    function closeModal() { document.getElementById('modalOverlay').classList.add('hidden'); }
+
+    async function submitModal() {
+        const dId = getDiscordId();
         const divId = document.getElementById('divSelect').value;
-        if (!divId) return alert("Please select a division from the dropdown first!");
+        let payload = null;
+        let command = '';
 
-        const payload = {
-            discord_id: document.getElementById('newUserId').value,
-            division_id: divId,
-            exp: document.getElementById('newUserExp').value || 0,
-            rank: document.getElementById('newUserRank').value || 'Recruit'
-        };
+        if (currentModalType === 'division') {
+            command = 'ADD_DIVISION';
+            payload = { name: document.getElementById('m_name').value, guild_id: document.getElementById('m_guild').value, roblox_id: document.getElementById('m_roblox').value };
+        } else if (currentModalType === 'user') {
+            if (!divId) return alert("Select a division first!");
+            command = 'ADD_USER';
+            payload = { discord_id: document.getElementById('m_uid').value, division_id: divId, rank: document.getElementById('m_urank').value };
+        } else if (currentModalType === 'rank') {
+            command = 'ADD_RANK';
+            payload = { rank: document.getElementById('m_rname').value, exp: document.getElementById('m_rexp').value, roblox_role_id: document.getElementById('m_rroblox').value, discord_role_id: document.getElementById('m_rdiscord').value };
+        }
 
-        if (!payload.discord_id) return alert("Discord ID is required!");
+        document.getElementById('status').innerText = "⏳ Submitting...";
+        await supabaseClient.from('commands').insert([{ message: JSON.stringify({ command, discord_id: dId, data: payload }), status: 'pending' }]);
+        
+        closeModal();
+        if (divId && currentModalType !== 'division') setTimeout(() => loadDivision(divId), 1500);
+    }
 
-        document.getElementById('status').innerText = "⏳ Adding User...";
-        await supabaseClient.from('commands').insert([{ 
-            message: JSON.stringify({ command: "ADD_USER", discord_id: getDiscordId(), data: payload }), 
-            status: 'pending' 
-        }]);
-
-        document.getElementById('newUserId').value = '';
-        document.getElementById('newUserExp').value = '0';
-        document.getElementById('newUserRank').value = 'Recruit';
-
-        setTimeout(() => loadDivision(divId), 1500);
+    // --- OTHER ACTIONS --- //
+    async function deleteDivision() {
+        const divId = document.getElementById('deleteDivSelect').value;
+        if (!divId || !confirm("⚠️ PERMANENT ACTION\nAre you sure you want to delete this division and all associated data?")) return;
+        await supabaseClient.from('commands').insert([{ message: JSON.stringify({ command: "DELETE_DIVISION", discord_id: getDiscordId(), data: { division_id: divId } }), status: 'pending' }]);
     }
 
     async function deleteRow(table, id) {
         if (!confirm("Are you sure you want to delete this row?")) return;
-        
         document.getElementById('status').innerText = "🧨 Deleting...";
-        await supabaseClient.from('commands').insert([{ 
-            message: JSON.stringify({ command: "DELETE_ROW", discord_id: getDiscordId(), data: { table: table, id: id } }), 
-            status: 'pending' 
-        }]);
-
-        const divId = document.getElementById('divSelect').value;
-        setTimeout(() => loadDivision(divId), 1500);
+        await supabaseClient.from('commands').insert([{ message: JSON.stringify({ command: "DELETE_ROW", discord_id: getDiscordId(), data: { table: table, id: id } }), status: 'pending' }]);
+        setTimeout(() => loadDivision(document.getElementById('divSelect').value), 1500);
     }
 
-    async function submitNewDivision() {
-        const payload = {
-            name: document.getElementById('newDivName').value,
-            guild_id: document.getElementById('newDivGuild').value,
-            roblox_id: document.getElementById('newDivRoblox').value
-        };
-        await supabaseClient.from('commands').insert([{ 
-            message: JSON.stringify({ command: "ADD_DIVISION", discord_id: getDiscordId(), data: payload }), 
-            status: 'pending' 
-        }]);
-        
-        document.getElementById('newDivName').value = '';
-        document.getElementById('newDivGuild').value = '';
-        document.getElementById('newDivRoblox').value = '';
-        document.getElementById('status').innerText = "⏳ Creating Division...";
-    }
-
-    async function deleteDivision() {
-        const divId = document.getElementById('deleteDivSelect').value;
-        if (!divId) return;
-
-        if (confirm("⚠️ PERMANENT ACTION\nAre you sure you want to delete this division and all associated data?")) {
-            await supabaseClient.from('commands').insert([{ 
-                message: JSON.stringify({ command: "DELETE_DIVISION", discord_id: getDiscordId(), data: { division_id: divId } }), 
-                status: 'pending' 
-            }]);
-            document.getElementById('status').innerText = "🧨 Deleting...";
-        }
-    }
-
-    // --- DATA RENDERING --- //
-
+    // --- RENDERING --- //
     function handleBotUpdate(data) {
         const status = document.getElementById('status');
 
         if (data.type === "DIV_LIST" || data.type === "DIV_LIST_REFRESH") {
-            const selects = [document.getElementById('divSelect'), document.getElementById('deleteDivSelect')];
-            const optHtml = '<option value="">-- Select Division --</option>' + 
-                data.divisions.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
-            
-            selects.forEach(s => { if(s) s.innerHTML = optHtml; });
+            const optHtml = '<option value="">-- Select Division --</option>' + data.divisions.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+            document.getElementById('divSelect').innerHTML = optHtml;
+            document.getElementById('deleteDivSelect').innerHTML = optHtml;
             status.innerText = "🟢 Permissions Active";
-
             if (data.type === "DIV_LIST_REFRESH") refreshDivList(); 
         }
 
         if (data.type === "DIV_DATA") {
-            // Render Users
-            document.querySelector("#tableUsers tbody").innerHTML = data.users.map(u => `<tr><td>${u.discord_id}</td><td onclick="makeEdit(this,'users','exp',${u.id})">${u.exp} <span class="edit-icon">✏️</span></td><td onclick="makeEdit(this,'users','rank',${u.id})">${u.rank} <span class="edit-icon">✏️</span></td><td><button class="btn btn-red" style="padding: 5px 10px;" onclick="deleteRow('users', ${u.id})">🗑️</button></td></tr>`).join('');
-            
-            // Render Ranks
-            document.querySelector("#tableRanks tbody").innerHTML = data.ranks.map(r => `<tr><td>${r.rank}</td><td onclick="makeEdit(this,'ranks','exp',${r.id})">${r.exp} <span class="edit-icon">✏️</span></td><td onclick="makeEdit(this,'ranks','roblox_role_id',${r.id})">${r.roblox_role_id || 0} <span class="edit-icon">✏️</span></td><td onclick="makeEdit(this,'ranks','discord_role_id',${r.id})">${r.discord_role_id || 0} <span class="edit-icon">✏️</span></td></tr>`).join('');
-            
-            // Render Settings
+            currentRanks = data.ranks || []; // Save for dropdowns
+
+            document.querySelector("#tableUsers tbody").innerHTML = data.users.map(u => `<tr><td>${u.discord_id}</td><td onclick="makeEdit(this,'users','exp',${u.id})">${u.exp} <span class="edit-icon">✏️</span></td><td onclick="makeEdit(this,'users','rank',${u.id})">${u.rank} <span class="edit-icon">✏️</span></td><td><button class="btn btn-red" style="padding: 3px 8px;" onclick="deleteRow('users', ${u.id})">🗑️</button></td></tr>`).join('');
+            document.querySelector("#tableRanks tbody").innerHTML = currentRanks.map(r => `<tr><td>${r.rank}</td><td onclick="makeEdit(this,'ranks','exp',${r.id})">${r.exp} <span class="edit-icon">✏️</span></td><td onclick="makeEdit(this,'ranks','roblox_role_id',${r.id})">${r.roblox_role_id || 0} <span class="edit-icon">✏️</span></td><td onclick="makeEdit(this,'ranks','discord_role_id',${r.id})">${r.discord_role_id || 0} <span class="edit-icon">✏️</span></td><td><button class="btn btn-red" style="padding: 3px 8px;" onclick="deleteRow('ranks', ${r.id})">🗑️</button></td></tr>`).join('');
             document.querySelector("#tableSettings tbody").innerHTML = data.settings.map(s => `<tr><td>${s.setting}</td><td onclick="makeEdit(this,'settings','value',${s.id})">${s.value} <span class="edit-icon">✏️</span></td></tr>`).join('');
             
-            status.innerText = "🟢 Synced (Div #" + data.active_div + ")";
+            status.innerText = "🟢 Synced";
         }
     }
 
     function makeEdit(cell, table, col, id) {
         if (cell.querySelector('input')) return;
+        
         const old = cell.innerText.replace('✏️', '').trim();
-        cell.innerHTML = `<input class="edit-input" value="${old}" onkeydown="if(event.key==='Enter') saveField(this,'${table}','${col}',${id})">`;
-        cell.querySelector('input').focus();
+        
+        // Render Rank Dropdown if editing User Rank
+        if (table === 'users' && col === 'rank') {
+            const opts = currentRanks.map(r => `<option value="${r.rank}" ${r.rank === old ? 'selected' : ''}>${r.rank}</option>`).join('');
+            cell.innerHTML = `<select class="edit-input" onchange="saveField(this,'${table}','${col}',${id})">${opts}</select>`;
+            cell.querySelector('select').focus();
+        } else {
+            // Normal Text Input
+            cell.innerHTML = `<input class="edit-input" value="${old}" onkeydown="if(event.key==='Enter') saveField(this,'${table}','${col}',${id})" onblur="saveField(this,'${table}','${col}',${id})">`;
+            cell.querySelector('input').focus();
+        }
     }
 
     async function saveField(input, table, col, id) {
-        await supabaseClient.from('commands').insert([{ 
-            message: JSON.stringify({ command: "UPDATE_VALUE", data: { table, column: col, id, newValue: input.value } }), 
-            status: 'pending' 
-        }]);
+        const val = input.value.trim();
+        if(val === "") return; // Prevent saving blanks accidentally
+        
+        await supabaseClient.from('commands').insert([{ message: JSON.stringify({ command: "UPDATE_VALUE", data: { table, column: col, id, newValue: val } }), status: 'pending' }]);
         document.getElementById('status').innerText = "💾 Saving...";
+        
+        // Return cell to normal text visually before refresh
+        input.parentElement.innerHTML = `${val} <span class="edit-icon">✏️</span>`;
     }
 </script>
 </body>
