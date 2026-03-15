@@ -2,158 +2,94 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Coat Bot Interface</title>
+    <title>Coat Bot Database Manager</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        :root {
-            --bg: #2c2f33;
-            --card: #23272a;
-            --blurple: #5865F2;
-            --green: #43b581;
-            --grey: #99aab5;
-            --white: #ffffff;
-        }
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); color: var(--white); display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
-        .container { background: var(--card); padding: 25px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); width: 90%; max-width: 600px; }
-        
-        h2, h3 { text-align: center; margin-top: 0; }
-        #status { text-align: center; font-size: 0.85rem; color: var(--grey); margin-bottom: 20px; font-style: italic; }
-
-        /* Form Styling */
-        .input-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; background: #2f3136; padding: 15px; border-radius: 8px; }
-        input { padding: 12px; border-radius: 4px; border: 1px solid #202225; background: #40444b; color: white; outline: none; }
-        input:focus { border-color: var(--blurple); }
-        
-        .btn-add { padding: 12px; background: var(--green); color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .btn-add:hover { background: #3ca374; }
-        
-        .btn-fetch { width: 100%; padding: 10px; background: var(--blurple); color: white; border: none; border-radius: 4px; margin-bottom: 20px; cursor: pointer; font-weight: bold; }
-
-        /* Table Styling */
-        #dbContainer { background: #1a1c1e; border-radius: 6px; padding: 10px; min-height: 100px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th { text-align: left; color: var(--grey); font-size: 0.8rem; text-transform: uppercase; padding: 10px; border-bottom: 1px solid #40444b; }
-        td { padding: 12px 10px; border-bottom: 1px solid #2f3136; font-size: 0.95rem; }
-        tr:last-child td { border-bottom: none; }
-        .empty-msg { text-align: center; color: var(--grey); padding: 20px; }
+        :root { --bg: #2c2f33; --card: #23272a; --blurple: #5865F2; --green: #43b581; --white: #ffffff; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--white); padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; background: var(--card); padding: 25px; border-radius: 12px; }
+        .section { background: #2f3136; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        input { padding: 10px; margin: 5px; border-radius: 4px; border: none; background: #40444b; color: white; width: 180px; }
+        button { padding: 10px 20px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; background: var(--blurple); color: white; }
+        .btn-add { background: var(--green); width: 100%; margin-top: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9em; }
+        th, td { text-align: left; padding: 10px; border-bottom: 1px solid #40444b; }
+        th { color: #99aab5; text-transform: uppercase; font-size: 0.75rem; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h2>Coat Bot Interface</h2>
-        <div id="status">Connecting...</div>
+<div class="container">
+    <h2>Coat Bot Data Management</h2>
+    <p id="status" style="color: #99aab5;">Connecting...</p>
 
-        <div class="input-group">
-            <h3>➕ Add New Division</h3>
-            <input type="text" id="divName" placeholder="Division Name (e.g. Alpha)">
-            <input type="text" id="divLeader" placeholder="Leader Name (e.g. JohnDoe)">
-            <button class="btn-add" id="addBtn" onclick="addDivision()">Add to Database</button>
-        </div>
-
-        <button class="btn-fetch" onclick="requestDatabase()">🔄 Refresh List</button>
-
-        <div id="dbContainer">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Division</th>
-                        <th>Leader</th>
-                    </tr>
-                </thead>
-                <tbody id="tableBody">
-                    <tr><td colspan="2" class="empty-msg">No data loaded yet.</td></tr>
-                </tbody>
-            </table>
-        </div>
+    <div class="section">
+        <h3>➕ Add Division</h3>
+        <input type="text" id="divName" placeholder="Name">
+        <input type="number" id="divGuild" placeholder="Guild ID">
+        <input type="number" id="divRoblox" placeholder="Roblox ID">
+        <button class="btn-add" onclick="addDivision()">Insert into SQLite</button>
     </div>
 
-    <script src="config.js"></script>
+    <h3>Divisions</h3>
+    <table id="tableDivs"><thead><tr><th>ID</th><th>Name</th><th>Guild</th><th>Roblox</th></tr></thead><tbody></tbody></table>
 
-    <script>
-        let supabaseClient;
+    <h3>Users</h3>
+    <table id="tableUsers"><thead><tr><th>Discord ID</th><th>Div ID</th><th>EXP</th><th>Rank</th><th>Leader?</th></tr></thead><tbody></tbody></table>
+    
+    <h3>Settings</h3>
+    <table id="tableSettings"><thead><tr><th>Div ID</th><th>Setting</th><th>Value</th></tr></thead><tbody></tbody></table>
+</div>
 
-        window.onload = () => {
-            if (!window.ENV_URL || !window.ENV_KEY) {
-                document.getElementById('status').innerText = "Config Error: Check GitHub Secrets.";
-                return;
+<script src="config.js"></script>
+<script>
+    let supabaseClient;
+
+    window.onload = () => {
+        supabaseClient = supabase.createClient(window.ENV_URL, window.ENV_KEY);
+        
+        // Realtime Listener
+        supabaseClient.channel('db_sync').on('postgres_changes', { 
+            event: 'UPDATE', schema: 'public', table: 'bot_responses', filter: 'id=eq.1' 
+        }, payload => {
+            updateUI(payload.new.data);
+            document.getElementById('status').innerText = "Database Synced.";
+        }).subscribe();
+
+        requestSync();
+    };
+
+    async function requestSync() {
+        document.getElementById('status').innerText = "Requesting data...";
+        await supabaseClient.from('commands').insert([{ message: JSON.stringify({command: "GET_DB_VIEW"}), status: 'pending' }]);
+    }
+
+    async function addDivision() {
+        const payload = {
+            command: "ADD_DIVISION",
+            data: {
+                name: document.getElementById('divName').value,
+                guild_id: document.getElementById('divGuild').value,
+                roblox_id: document.getElementById('divRoblox').value
             }
-
-            supabaseClient = supabase.createClient(window.ENV_URL, window.ENV_KEY);
-            document.getElementById('status').innerText = "Connected to Supabase.";
-
-            // REALTIME: Listen for bot updates
-            supabaseClient
-                .channel('db_sync')
-                .on('postgres_changes', { 
-                    event: 'UPDATE', 
-                    schema: 'public', 
-                    table: 'bot_responses',
-                    filter: 'id=eq.1' 
-                }, payload => {
-                    renderTable(payload.new.data.divisions);
-                    document.getElementById('status').innerText = "Database updated!";
-                })
-                .subscribe();
-
-            // Initial fetch
-            requestDatabase();
         };
+        await supabaseClient.from('commands').insert([{ message: JSON.stringify(payload), status: 'pending' }]);
+        document.getElementById('status').innerText = "Add request sent!";
+    }
 
-        async function requestDatabase() {
-            document.getElementById('status').innerText = "Syncing with Bot...";
-            const payload = { command: "GET_DB_VIEW" };
-            await sendCommand(payload);
-        }
+    function updateUI(data) {
+        // Render Divisions
+        document.querySelector("#tableDivs tbody").innerHTML = data.divisions.map(d => 
+            `<tr><td>${d.id}</td><td>${d.name}</td><td>${d.guild_id}</td><td>${d.roblox_id}</td></tr>`).join('');
+        
+        // Render Users
+        document.querySelector("#tableUsers tbody").innerHTML = data.users.map(u => 
+            `<tr><td>${u.discord_id}</td><td>${u.division_id}</td><td>${u.exp}</td><td>${u.rank}</td><td>${u.leader ? '✅' : '❌'}</td></tr>`).join('');
 
-        async function addDivision() {
-            const name = document.getElementById('divName').value.trim();
-            const leader = document.getElementById('divLeader').value.trim();
-
-            if (!name || !leader) return alert("Please fill in both fields!");
-
-            const payload = {
-                command: "ADD_DIVISION",
-                data: { name: name, leader: leader }
-            };
-
-            document.getElementById('status').innerText = "Sending add request...";
-            await sendCommand(payload);
-
-            // Clear inputs
-            document.getElementById('divName').value = '';
-            document.getElementById('divLeader').value = '';
-        }
-
-        async function sendCommand(payload) {
-            const { error } = await supabaseClient
-                .from('commands')
-                .insert([{ 
-                    message: JSON.stringify(payload), 
-                    status: 'pending' 
-                }]);
-
-            if (error) {
-                console.error(error);
-                alert("Error sending command: " + error.message);
-            }
-        }
-
-        function renderTable(divisions) {
-            const tbody = document.getElementById('tableBody');
-            if (!divisions || divisions.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="2" class="empty-msg">No divisions found.</td></tr>';
-                return;
-            }
-
-            tbody.innerHTML = divisions.map(div => `
-                <tr>
-                    <td>${div.name || '---'}</td>
-                    <td>${div.leader || '---'}</td>
-                </tr>
-            `).join('');
-        }
-    </script>
+        // Render Settings
+        document.querySelector("#tableSettings tbody").innerHTML = data.settings.map(s => 
+            `<tr><td>${s.division_id}</td><td>${s.setting}</td><td>${s.value}</td></tr>`).join('');
+    }
+</script>
 </body>
 </html>
