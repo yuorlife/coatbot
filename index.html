@@ -70,16 +70,17 @@
     let currentUser;
 
     window.onload = async () => {
-        if (!window.ENV_URL || !window.ENV_KEY) return alert("Missing Config");
-
         supabaseClient = supabase.createClient(window.ENV_URL, window.ENV_KEY);
-
-        // Check login session
-        const { data: { session } } = await supabaseClient.auth.getSession();
+    
+        // 1. IMPORTANT: This "catches" the login from the URL redirect
+        const { data: { session }, error } = await supabaseClient.auth.getSession();
+        
         if (session) {
             setupAuthenticatedSession(session.user);
+        } else {
+            document.getElementById('authSection').style.display = 'block';
+            document.getElementById('status').innerText = "Please log in.";
         }
-
         // Setup Realtime
         supabaseClient.channel('db_sync').on('postgres_changes', { 
             event: 'UPDATE', schema: 'public', table: 'bot_responses', filter: 'id=eq.1' 
