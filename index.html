@@ -8,7 +8,7 @@
     <style>
         body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #2c2f33; color: white; margin: 0; }
         .container { background: #23272a; padding: 30px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); text-align: center; }
-        input { padding: 12px; border-radius: 5px; border: none; width: 250px; margin-bottom: 15px; display: block; }
+        input, select { padding: 12px; border-radius: 5px; border: none; width: 250px; margin-bottom: 15px; display: block; background: #40444b; color: white; }
         button { padding: 10px 20px; background: #5865F2; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; }
         button:hover { background: #4752c4; }
         #status { margin-top: 15px; font-size: 0.9em; color: #99aab5; }
@@ -17,9 +17,15 @@
 <body>
 
     <div class="container">
-        <h2>Send to Bot</h2>
-        <input type="text" id="messageInput" placeholder="Enter message...">
-        <button id="sendBtn" onclick="sendToBot()">Send Message</button>
+        <h2>Bot JSON Portal</h2>
+        <input type="text" id="userInput" placeholder="Your Name">
+        <select id="typeInput">
+            <option value="alert">Alert</option>
+            <option value="command">Command</option>
+            <option value="info">Info</option>
+        </select>
+        <input type="text" id="messageInput" placeholder="Message content...">
+        <button id="sendBtn" onclick="sendToBot()">Send JSON Payload</button>
         <p id="status">System starting...</p>
     </div>
 
@@ -28,18 +34,10 @@
     <script>
         let supabaseClient;
 
-        // Initialize after a tiny delay to ensure config.js is loaded
         window.onload = () => {
-            const statusLabel = document.getElementById('status');
-            try {
-                if (!window.ENV_URL || !window.ENV_KEY) {
-                    throw new Error("Configuration missing. Check GitHub Secrets.");
-                }
+            if (window.ENV_URL && window.ENV_KEY) {
                 supabaseClient = supabase.createClient(window.ENV_URL, window.ENV_KEY);
-                statusLabel.innerText = "System Ready.";
-            } catch (err) {
-                console.error(err);
-                statusLabel.innerText = "Error: Configuration not found.";
+                document.getElementById('status').innerText = "System Ready.";
             }
         };
 
@@ -47,21 +45,31 @@
             if (!supabaseClient) return alert("System not ready!");
 
             const msgInput = document.getElementById('messageInput');
+            const userInput = document.getElementById('userInput');
+            const typeInput = document.getElementById('typeInput');
             const statusLabel = document.getElementById('status');
-            const message = msgInput.value.trim();
 
-            if (!message) return;
+            const payload = {
+                user: userInput.value || "Anonymous",
+                content: msgInput.value.trim(),
+                type: typeInput.value,
+                timestamp: new Date().toISOString()
+            };
 
-            statusLabel.innerText = "Sending...";
+            if (!payload.content) return;
+
+            statusLabel.innerText = "Sending JSON...";
             
             try {
                 const { error } = await supabaseClient
                     .from('commands')
-                    .insert([{ message: message, status: 'pending' }]);
+                    .insert([{ 
+                        message: JSON.stringify(payload), // Stored as text, parsed as JSON by bot
+                        status: 'pending' 
+                    }]);
 
                 if (error) throw error;
-
-                statusLabel.innerText = "Sent! Bot will process it.";
+                statusLabel.innerText = "Sent successfully!";
                 msgInput.value = "";
             } catch (err) {
                 statusLabel.innerText = "Error: " + err.message;
