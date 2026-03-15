@@ -2,71 +2,90 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Coat Admin | Division Manager</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coat Admin | Division Management</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        :root { --bg: #2c2f33; --card: #23272a; --blurple: #5865F2; --green: #43b581; --red: #f04747; --grey: #99aab5; }
+        :root { --bg: #2c2f33; --card: #23272a; --blurple: #5865F2; --green: #43b581; --red: #f04747; --grey: #99aab5; --darker: #18191c; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; padding: 20px; margin: 0; }
-        .container { max-width: 1000px; margin: 0 auto; background: var(--card); padding: 25px; border-radius: 12px; }
+        .container { max-width: 1100px; margin: 0 auto; background: var(--card); padding: 25px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         
-        /* Sections */
+        /* Layout Elements */
         .hidden { display: none !important; }
         .auth-card { text-align: center; padding: 60px 20px; border: 2px dashed var(--blurple); border-radius: 12px; }
-        .user-bar { display: flex; justify-content: space-between; align-items: center; background: #18191c; padding: 10px 20px; border-radius: 8px; margin-bottom: 20px; }
+        .user-bar { display: flex; justify-content: space-between; align-items: center; background: var(--darker); padding: 12px 20px; border-radius: 8px; margin-bottom: 20px; }
+        .selector-box { background: #2f3136; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 5px solid var(--blurple); }
         
-        /* Select Styling */
-        .selector-box { background: #2f3136; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 4px solid var(--blurple); }
-        select { padding: 10px; border-radius: 4px; background: #40444b; color: white; border: 1px solid var(--grey); width: 250px; cursor: pointer; }
-
+        /* Interactive Elements */
+        select { padding: 10px; border-radius: 4px; background: #40444b; color: white; border: 1px solid var(--grey); width: 280px; cursor: pointer; }
+        button#loginBtn { background: var(--blurple); color: white; border: none; padding: 15px 40px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1rem; }
+        
         /* Tables */
-        table { width: 100%; border-collapse: collapse; background: #2f3136; border-radius: 8px; overflow: hidden; margin-bottom: 30px; }
+        h3 { color: var(--blurple); margin-top: 30px; border-bottom: 1px solid #40444b; padding-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; background: #2f3136; border-radius: 8px; overflow: hidden; margin-bottom: 20px; }
         th, td { padding: 12px; text-align: left; border-bottom: 1px solid #40444b; }
-        th { background: #18191c; color: var(--grey); font-size: 0.75rem; text-transform: uppercase; }
-        .edit-input { background: #40444b; color: white; border: 1px solid var(--blurple); padding: 4px; border-radius: 3px; width: 80%; }
-        .edit-icon { cursor: pointer; opacity: 0.4; font-size: 0.8em; }
+        th { background: var(--darker); color: var(--grey); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; }
+        tr:hover { background: #35383e; }
 
-        #loginBtn { background: var(--blurple); color: white; border: none; padding: 15px 40px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1rem; }
+        .edit-input { background: #40444b; color: white; border: 1px solid var(--blurple); padding: 6px; border-radius: 4px; width: 90%; }
+        .edit-icon { cursor: pointer; opacity: 0.4; font-size: 0.8em; margin-left: 5px; }
         #status { font-size: 0.85rem; color: var(--grey); }
+        .badge { background: #4f545c; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div id="authSection" class="auth-card">
-        <h2>Coat Bot Management</h2>
-        <p>Access your divisions and ranks by logging in with Discord.</p>
-        <button id="loginBtn" onclick="login()">Log In with Discord</button>
+        <h1>Coat Management System</h1>
+        <p>Log in with Discord to manage your specific division data, ranks, and settings.</p>
+        <button id="loginBtn" onclick="login()">Connect Discord</button>
     </div>
 
     <div id="mainUI" class="hidden">
         <div class="user-bar">
             <div>
-                <strong id="userName">User</strong> 
-                <span id="status" style="margin-left: 15px;">📡 Initializing...</span>
+                <strong id="userName" style="color: var(--blurple);">Admin</strong> 
+                <span id="status" style="margin-left: 20px;">📡 Initializing...</span>
             </div>
             <button onclick="logout()" style="background:none; border:none; color:var(--red); cursor:pointer; font-weight:bold;">Logout</button>
         </div>
 
         <div id="selectorSection" class="selector-box">
-            <h3 style="margin-top:0">Manage Division</h3>
-            <p style="font-size: 0.9rem; color: var(--grey);">Select a server where you have Administrator permissions:</p>
+            <h4 style="margin:0 0 10px 0;">Division Scope</h4>
             <select id="divSelect" onchange="loadDivision(this.value)">
-                <option value="">-- Loading Divisions --</option>
+                <option value="">-- Loading Your Divisions --</option>
             </select>
         </div>
 
         <div id="contentTables" class="hidden">
-            <h3>Division Users</h3>
+            
+            <h3>User Management</h3>
             <table id="tableUsers">
-                <thead><tr><th>Discord ID</th><th>EXP</th><th>Rank</th></tr></thead>
+                <thead><tr><th>Discord ID</th><th>EXP</th><th>Rank Name</th></tr></thead>
                 <tbody></tbody>
             </table>
 
-            <h3>Rank Requirements</h3>
+            <h3>Rank Configurations</h3>
             <table id="tableRanks">
-                <thead><tr><th>Rank Name</th><th>Min EXP</th><th>Permissions</th></tr></thead>
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Required EXP</th>
+                        <th>Roblox Role ID</th>
+                        <th>Discord Role ID</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
                 <tbody></tbody>
             </table>
+
+            <h3>Global Settings</h3>
+            <table id="tableSettings">
+                <thead><tr><th>Setting Key</th><th>Value</th></tr></thead>
+                <tbody></tbody>
+            </table>
+
         </div>
     </div>
 </div>
@@ -77,23 +96,22 @@
     let currentUser;
 
     window.onload = async () => {
-        if (!window.ENV_URL || !window.ENV_KEY) return;
+        if (!window.ENV_URL || !window.ENV_KEY) return alert("Config.js missing URL/KEY");
         supabaseClient = supabase.createClient(window.ENV_URL, window.ENV_KEY);
 
-        // Listen for Auth Changes (detects the redirect token)
+        // Handle OAuth Redirect & Persistence
         supabaseClient.auth.onAuthStateChange((event, session) => {
-            if (session) setupUI(session.user);
+            if (session) setupDashboard(session.user);
         });
 
-        // Check for existing session
         const { data: { session } } = await supabaseClient.auth.getSession();
-        if (session) setupUI(session.user);
+        if (session) setupDashboard(session.user);
 
-        // Realtime Listener
+        // Realtime Subscription
         supabaseClient.channel('db_sync').on('postgres_changes', { 
             event: 'UPDATE', schema: 'public', table: 'bot_responses', filter: 'id=eq.1' 
         }, payload => {
-            renderData(payload.new.data);
+            processBotResponse(payload.new.data);
         }).subscribe();
     };
 
@@ -112,19 +130,18 @@
         window.location.reload();
     }
 
-    function setupUI(user) {
+    function setupDashboard(user) {
         currentUser = user;
         document.getElementById('authSection').classList.add('hidden');
         document.getElementById('mainUI').classList.remove('hidden');
         document.getElementById('userName').innerText = user.user_metadata.full_name;
         
-        // Request the list of divisions this user is an admin in
-        requestAuthorizedDivs();
+        requestAuthList();
     }
 
-    async function requestAuthorizedDivs() {
+    async function requestAuthList() {
         const discordId = currentUser.app_metadata.provider_id || currentUser.user_metadata.provider_id;
-        document.getElementById('status').innerText = "⏳ Checking Admin Status...";
+        document.getElementById('status').innerText = "⏳ Verifying Permissions...";
         await supabaseClient.from('commands').insert([{ 
             message: JSON.stringify({ command: "GET_AUTHORIZED_DATA", discord_id: discordId }), 
             status: 'pending' 
@@ -133,33 +150,32 @@
 
     async function loadDivision(divId) {
         if (!divId) return;
-        document.getElementById('status').innerText = "⏳ Loading Data...";
+        document.getElementById('status').innerText = "⏳ Fetching Division Data...";
         await supabaseClient.from('commands').insert([{ 
             message: JSON.stringify({ command: "GET_DIVISION_DATA", data: { division_id: divId } }), 
             status: 'pending' 
         }]);
     }
 
-    function renderData(data) {
+    function processBotResponse(data) {
         const status = document.getElementById('status');
 
-        // Case 1: Populate the Dropdown
         if (data.type === "DIV_LIST") {
             const select = document.getElementById('divSelect');
-            if (data.divisions.length === 0) {
-                status.innerText = "❌ No Admin Access Found";
-                select.innerHTML = '<option>No Divisions Found</option>';
+            if (!data.divisions || data.divisions.length === 0) {
+                status.innerText = "❌ No divisions found for your account.";
+                select.innerHTML = '<option>No Access Available</option>';
             } else {
-                select.innerHTML = '<option value="">-- Choose a Division --</option>' + 
+                select.innerHTML = '<option value="">-- Choose Division --</option>' + 
                     data.divisions.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
-                status.innerText = "🟢 Ready";
+                status.innerText = "🟢 Permissions Loaded";
             }
         }
 
-        // Case 2: Populate the Tables
         if (data.type === "DIV_DATA") {
             document.getElementById('contentTables').classList.remove('hidden');
             
+            // 1. Users
             document.querySelector("#tableUsers tbody").innerHTML = (data.users || []).map(u => `
                 <tr>
                     <td>${u.discord_id}</td>
@@ -168,15 +184,26 @@
                 </tr>
             `).join('');
 
+            // 2. Ranks
             document.querySelector("#tableRanks tbody").innerHTML = (data.ranks || []).map(r => `
                 <tr>
                     <td onclick="makeEditable(this,'ranks','rank',${r.id})">${r.rank} <span class="edit-icon">✏️</span></td>
                     <td onclick="makeEditable(this,'ranks','exp',${r.id})">${r.exp} <span class="edit-icon">✏️</span></td>
-                    <td>${r.officer ? '👮 Officer' : ''} ${r.leader ? '👑 Leader' : ''}</td>
+                    <td onclick="makeEditable(this,'ranks','roblox_role_id',${r.id})">${r.roblox_role_id || 0} <span class="edit-icon">✏️</span></td>
+                    <td onclick="makeEditable(this,'ranks','discord_role_id',${r.id})">${r.discord_role_id || 0} <span class="edit-icon">✏️</span></td>
+                    <td><span class="badge">${r.officer ? 'Officer' : ''} ${r.leader ? 'Leader' : 'Member'}</span></td>
+                </tr>
+            `).join('');
+
+            // 3. Settings
+            document.querySelector("#tableSettings tbody").innerHTML = (data.settings || []).map(s => `
+                <tr>
+                    <td><strong>${s.setting}</strong></td>
+                    <td onclick="makeEditable(this,'settings','value',${s.id})">${s.value} <span class="edit-icon">✏️</span></td>
                 </tr>
             `).join('');
             
-            status.innerText = "🟢 Editing Mode Active";
+            status.innerText = "🟢 Active Sync: Div #" + data.active_div;
         }
     }
 
@@ -188,7 +215,7 @@
     }
 
     async function saveEdit(input, table, column, id) {
-        document.getElementById('status').innerText = "💾 Saving...";
+        document.getElementById('status').innerText = "💾 Saving to Bot...";
         await supabaseClient.from('commands').insert([{ 
             message: JSON.stringify({ command: "UPDATE_VALUE", data: { table, column, id, newValue: input.value } }), 
             status: 'pending' 
