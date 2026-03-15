@@ -3,126 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Discord Bot Controller</title>
+    <title>Bot Command Center</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
     <style>
-        :root {
-            --discord-blue: #5865F2;
-            --discord-dark: #2c2f33;
-            --discord-grey: #99aab5;
-        }
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            background-color: var(--discord-dark); 
-            color: white; 
-        }
-        .container {
-            background: #23272a;
-            padding: 2rem;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            text-align: center;
-            width: 90%;
-            max-width: 400px;
-        }
-        h2 { margin-bottom: 1.5rem; }
-        input { 
-            padding: 12px; 
-            border-radius: 4px; 
-            border: 1px solid #23272a; 
-            width: 100%; 
-            box-sizing: border-box;
-            margin-bottom: 1rem; 
-            background: #40444b;
-            color: white;
-        }
-        button { 
-            padding: 12px 24px; 
-            background: var(--discord-blue); 
-            color: white; 
-            border: none; 
-            border-radius: 4px; 
-            cursor: pointer; 
-            font-weight: bold; 
-            width: 100%;
-            transition: background 0.2s;
-        }
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #2c2f33; color: white; margin: 0; }
+        .container { background: #23272a; padding: 30px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); text-align: center; }
+        input { padding: 12px; border-radius: 5px; border: none; width: 250px; margin-bottom: 15px; display: block; }
+        button { padding: 10px 20px; background: #5865F2; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; }
         button:hover { background: #4752c4; }
-        button:disabled { background: #3c4270; cursor: not-allowed; }
-        #status { 
-            margin-top: 1rem; 
-            font-size: 0.85rem; 
-            color: var(--discord-grey); 
-        }
+        #status { margin-top: 15px; font-size: 0.9em; color: #99aab5; }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h2>Bot Command Center</h2>
-        <input type="text" id="messageInput" placeholder="Type a message for Discord...">
+        <h2>Send to Bot</h2>
+        <input type="text" id="messageInput" placeholder="Enter message...">
         <button id="sendBtn" onclick="sendToBot()">Send Message</button>
-        <p id="status">Ready to send.</p>
+        <p id="status">System starting...</p>
     </div>
 
-    <script>
-        // Placeholders for GitHub Actions to replace
-        const SUPABASE_URL = 'https://fekjwggaovasgmxydboh.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZla2p3Z2dhb3Zhc2dteHlkYm9oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0NzUxOTcsImV4cCI6MjA4OTA1MTE5N30.HgMsMGkiVd8u-57PViPcE6qI7Yn2uIkWlFo9l350cWg';
+    <script src="config.js"></script>
 
-        // Initialize Supabase
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    <script>
+        let supabaseClient;
+
+        // Initialize after a tiny delay to ensure config.js is loaded
+        window.onload = () => {
+            const statusLabel = document.getElementById('status');
+            try {
+                if (!window.ENV_URL || !window.ENV_KEY) {
+                    throw new Error("Configuration missing. Check GitHub Secrets.");
+                }
+                supabaseClient = supabase.createClient(window.ENV_URL, window.ENV_KEY);
+                statusLabel.innerText = "System Ready.";
+            } catch (err) {
+                console.error(err);
+                statusLabel.innerText = "Error: Configuration not found.";
+            }
+        };
 
         async function sendToBot() {
+            if (!supabaseClient) return alert("System not ready!");
+
             const msgInput = document.getElementById('messageInput');
             const statusLabel = document.getElementById('status');
-            const sendBtn = document.getElementById('sendBtn');
-            
             const message = msgInput.value.trim();
 
-            if (!message) {
-                alert("Please enter a message!");
-                return;
-            }
+            if (!message) return;
 
-            // UI Feedback
-            statusLabel.innerText = "Sending to mailbox...";
-            statusLabel.style.color = "#99aab5";
-            sendBtn.disabled = true;
-
+            statusLabel.innerText = "Sending...";
+            
             try {
-                // Insert into your 'commands' table
                 const { error } = await supabaseClient
                     .from('commands')
-                    .insert([{ 
-                        message: message, 
-                        status: 'pending' 
-                    }]);
+                    .insert([{ message: message, status: 'pending' }]);
 
                 if (error) throw error;
 
-                // Success
-                statusLabel.innerText = "Sent! The bot will process it shortly.";
-                statusLabel.style.color = "#43b581"; // Discord Green
-                msgInput.value = ""; 
+                statusLabel.innerText = "Sent! Bot will process it.";
+                msgInput.value = "";
             } catch (err) {
-                console.error("Supabase Error:", err);
                 statusLabel.innerText = "Error: " + err.message;
-                statusLabel.style.color = "#f04747"; // Discord Red
-            } finally {
-                sendBtn.disabled = false;
             }
         }
-
-        // Global exposure for the HTML onclick
-        window.sendToBot = sendToBot;
     </script>
 </body>
 </html>

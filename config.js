@@ -1,0 +1,2 @@
+window.ENV_URL = 'https://fekjwggaovasgmxydboh.supabase.co';
+window.ENV_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZla2p3Z2dhb3Zhc2dteHlkYm9oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0NzUxOTcsImV4cCI6MjA4OTA1MTE5N30.HgMsMGkiVd8u-57PViPcE6qI7Yn2uIkWlFo9l350cWg';
