@@ -71,13 +71,35 @@
     let supabaseClient;
     let currentModalType = '';
 
-    window.onload = () => {
+    window.onload = async () => {
+        if (!window.ENV_URL || !window.ENV_KEY) {
+            document.getElementById('status').innerText = "Config Error: Check GitHub Secrets.";
+            return;
+        }
+    
+        // 1. Initialize Supabase
         supabaseClient = supabase.createClient(window.ENV_URL, window.ENV_KEY);
-        supabaseClient.channel('db_sync').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bot_responses', filter: 'id=eq.1' }, payload => {
-            renderUI(payload.new.data);
-            document.getElementById('status').innerText = "🟢 Synced";
-        }).subscribe();
-        requestSync();
+        document.getElementById('status').innerText = "Connected. Initializing Realtime...";
+    
+        // 2. Setup Realtime Listener
+        supabaseClient
+            .channel('db_sync')
+            .on('postgres_changes', { 
+                event: 'UPDATE', 
+                schema: 'public', 
+                table: 'bot_responses',
+                filter: 'id=eq.1' 
+            }, payload => {
+                console.log('Bot Response Received:', payload.new.data);
+                renderUI(payload.new.data); // Make sure this matches your function name
+                document.getElementById('status').innerText = "🟢 Synced";
+            })
+            .subscribe();
+        
+        // 3. IMPORTANT: Wait a tiny bit for the channel to connect, THEN request
+        setTimeout(() => {
+            requestSync();
+        }, 500); 
     };
 
     const requestSync = () => supabaseClient.from('commands').insert([{ message: JSON.stringify({command: "GET_DB_VIEW"}), status: 'pending' }]);
