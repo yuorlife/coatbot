@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: ["main"] # Or "master" depending on your default branch
+    branches: ["main"] # Change to "master" if your repo uses master
 
 permissions:
   contents: write
@@ -14,15 +14,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Inject Secrets into HTML
+      - name: Create Config File
         run: |
-          # Use a different delimiter (@) just in case your URL has pipes
-          # And we remove the VITE_ prefix to match exactly
-          sed -i 's@VITE_SUPABASE_URL@${{ secrets.SUPABASE_URL }}@g' index.html
-          sed -i 's@VITE_SUPABASE_ANON_KEY@${{ secrets.SUPABASE_ANON_KEY }}@g' index.html
+          echo "window.ENV_URL = '${{ secrets.SUPABASE_URL }}';" > config.js
+          echo "window.ENV_KEY = '${{ secrets.SUPABASE_ANON_KEY }}';" >> config.js
 
-      - name: Deploy
+      - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: . # The folder your index.html is in
-          branch: gh-pages # This creates a hidden branch for the live site
+          folder: .
+          branch: gh-pages
